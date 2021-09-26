@@ -1,7 +1,7 @@
 pipeline{
     agent any
     tools {
-      maven 'maven3'
+      maven 'mavenHome'
     }
     environment {
       DOCKER_TAG = getVersion()
@@ -9,8 +9,7 @@ pipeline{
     stages{
         stage('SCM'){
             steps{
-                git credentialsId: 'github', 
-                    url: 'https://github.com/javahometech/dockeransiblejenkins'
+                git 'https://github.com/sharath-c7/dockeransiblejenkins'
             }
         }
         
@@ -20,31 +19,34 @@ pipeline{
             }
         }
         
-        stage('Docker Build'){
+        stage('Docker Image Build'){
             steps{
-                sh "docker build . -t kammana/hariapp:${DOCKER_TAG} "
+                sh "docker build -t dockerc721/webaptest:${DOCKER_TAG} ."
             }
         }
         
-        stage('DockerHub Push'){
+        stage('Docker Image Push'){
             steps{
                 withCredentials([string(credentialsId: 'docker-hub', variable: 'dockerHubPwd')]) {
-                    sh "docker login -u kammana -p ${dockerHubPwd}"
+                sh "docker login -u dockerc721 -p ${dockerHubPwd}" 
                 }
-                
-                sh "docker push kammana/hariapp:${DOCKER_TAG} "
+                sh "docker push dockerc721/webaptest:${DOCKER_TAG}"
             }
         }
         
         stage('Docker Deploy'){
             steps{
-              ansiblePlaybook credentialsId: 'dev-server', disableHostKeyChecking: true, extras: "-e DOCKER_TAG=${DOCKER_TAG}", installation: 'ansible', inventory: 'dev.inv', playbook: 'deploy-docker.yml'
+                ansiblePlaybook credentialsId: 'dev-server', 
+                disableHostKeyChecking: true, 
+                extras: "-e DOCKER_TAG=${DOCKER_TAG}", 
+                installation: 'ansibleExe', 
+                inventory: 'dev.inv', 
+                playbook: 'deploy-docker.yml'
             }
         }
     }
 }
 
 def getVersion(){
-    def commitHash = sh label: '', returnStdout: true, script: 'git rev-parse --short HEAD'
-    return commitHash
+    def commitHash = sh returnStdout: true, script: 'git rev-parse --short HEAD'
 }
